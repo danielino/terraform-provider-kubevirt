@@ -12,9 +12,8 @@ func persistentVolumeClaimSpecFields() map[string]*schema.Schema {
 	return map[string]*schema.Schema{
 		"access_modes": {
 			Type:        schema.TypeSet,
-			Description: "A set of the desired access modes the volume should have. More info: http://kubernetes.io/docs/user-guide/persistent-volumes#access-modes-1",
-			Required:    true,
-			ForceNew:    true,
+			Description: "...",
+			Optional:    true,
 			Elem: &schema.Schema{
 				Type: schema.TypeString,
 				ValidateFunc: validation.StringInSlice([]string{
@@ -25,10 +24,11 @@ func persistentVolumeClaimSpecFields() map[string]*schema.Schema {
 			},
 			Set: schema.HashString,
 		},
+
 		"resources": {
 			Type:        schema.TypeList,
 			Description: "A list of the minimum resources the volume should have. More info: http://kubernetes.io/docs/user-guide/persistent-volumes#resources",
-			Required:    true,
+			Optional:    true,
 			MaxItems:    1,
 			Elem: &schema.Resource{
 				Schema: map[string]*schema.Schema{
@@ -80,7 +80,7 @@ func PersistentVolumeClaimSpecSchema() *schema.Schema {
 	return &schema.Schema{
 		Type:        schema.TypeList,
 		Description: "PVC is a pointer to the PVC Spec we want to use.",
-		Required:    true,
+		Optional:    true,
 		MaxItems:    1,
 		Elem: &schema.Resource{
 			Schema: fields,
@@ -93,16 +93,32 @@ func PersistentVolumeClaimSpecSchema() *schema.Schema {
 
 func FlattenPersistentVolumeClaimSpec(in v1.PersistentVolumeClaimSpec) []interface{} {
 	att := make(map[string]interface{})
-	att["access_modes"] = flattenPersistentVolumeAccessModes(in.AccessModes)
-	att["resources"] = flattenResourceRequirements(in.Resources)
+	isSet := false
+
+	if len(in.AccessModes) > 0 {
+		att["access_modes"] = flattenPersistentVolumeAccessModes(in.AccessModes)
+		isSet = true
+	}
+	res := flattenResourceRequirements(in.Resources)
+	if len(res) > 0 {
+		att["resources"] = res
+		isSet = true
+	}
 	if in.Selector != nil {
 		att["selector"] = flattenLabelSelector(in.Selector)
+		isSet = true
 	}
 	if in.VolumeName != "" {
 		att["volume_name"] = in.VolumeName
+		isSet = true
 	}
 	if in.StorageClassName != nil {
 		att["storage_class_name"] = *in.StorageClassName
+		isSet = true
+	}
+
+	if !isSet {
+		return nil
 	}
 	return []interface{}{att}
 }
@@ -114,6 +130,9 @@ func flattenResourceRequirements(in v1.ResourceRequirements) []interface{} {
 	}
 	if len(in.Requests) > 0 {
 		att["requests"] = utils.FlattenStringMap(utils.FlattenResourceList(in.Requests))
+	}
+	if len(att) == 0 {
+		return nil
 	}
 	return []interface{}{att}
 }

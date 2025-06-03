@@ -2,8 +2,8 @@ package datavolume
 
 import (
 	"fmt"
-
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	api "k8s.io/api/core/v1"
 	cdiv1 "kubevirt.io/containerized-data-importer-api/pkg/apis/core/v1beta1"
 )
 
@@ -11,6 +11,7 @@ func dataVolumeSourceFields() map[string]*schema.Schema {
 	return map[string]*schema.Schema{
 		"http": dataVolumeSourceHTTPSchema(),
 		"pvc":  dataVolumeSourcePVCSchema(),
+		"ref":  dataVolumeSourceRefSchema(),
 	}
 }
 
@@ -94,6 +95,41 @@ func dataVolumeSourcePVCSchema() *schema.Schema {
 
 }
 
+func dataVolumeSourceRefFields() map[string]*schema.Schema {
+	return map[string]*schema.Schema{
+		"kind": {
+			Type:        schema.TypeString,
+			Description: "The kind of the source reference, currently only \"DataSource\" is supported",
+			Optional:    true,
+		},
+		"name": {
+			Type:        schema.TypeString,
+			Description: "The name of the source reference.",
+			Optional:    true,
+		},
+		"namespace": {
+			Type:        schema.TypeString,
+			Description: "The namespace of the source reference, defaults to the DataVolume namespace.",
+			Optional:    true,
+		},
+	}
+}
+
+func dataVolumeSourceRefSchema() *schema.Schema {
+	fields := dataVolumeSourceRefFields()
+
+	return &schema.Schema{
+		Type:        schema.TypeList,
+		Description: "DataVolumeSourceRef defines an indirect reference to the source of data for the DataVolume.",
+		Optional:    true,
+		MaxItems:    1,
+		Elem: &schema.Resource{
+			Schema: fields,
+		},
+	}
+
+}
+
 // Expanders
 
 func expandDataVolumeSource(dataVolumeSource []interface{}) *cdiv1.DataVolumeSource {
@@ -152,6 +188,36 @@ func expandDataVolumeSourcePVC(dataVolumeSourcePVC []interface{}) *cdiv1.DataVol
 	return result
 }
 
+func expandDataVolumeSourceRef(dataVolumeSourceRef []interface{}) *cdiv1.DataVolumeSourceRef {
+	if len(dataVolumeSourceRef) == 0 || dataVolumeSourceRef[0] == nil {
+		return nil
+	}
+
+	result := &cdiv1.DataVolumeSourceRef{}
+
+	in := dataVolumeSourceRef[0].(map[string]interface{})
+
+	if v, ok := in["namespace"].(string); ok {
+		result.Namespace = &v
+	}
+	if v, ok := in["name"].(string); ok {
+		result.Name = v
+	}
+	if v, ok := in["kind"].(string); ok {
+		result.Kind = v
+	}
+
+	return result
+}
+
+func expandPersistentVolumeAccessModes(s []interface{}) []api.PersistentVolumeAccessMode {
+	out := make([]api.PersistentVolumeAccessMode, len(s))
+	for i, v := range s {
+		out[i] = api.PersistentVolumeAccessMode(v.(string))
+	}
+	return out
+}
+
 // Flatteners
 
 func flattenDataVolumeSource(in *cdiv1.DataVolumeSource) []interface{} {
@@ -180,6 +246,43 @@ func flattenDataVolumeSourcePVC(in cdiv1.DataVolumeSourcePVC) []interface{} {
 	att := map[string]interface{}{
 		"namespace": in.Namespace,
 		"name":      in.Name,
+	}
+	return []interface{}{att}
+}
+
+func flattenDataVolumeSourceRef(in cdiv1.DataVolumeSourceRef) []interface{} {
+	att := map[string]interface{}{
+		"namespace": *in.Namespace,
+		"name":      in.Name,
+		"kind":      in.Kind,
+	}
+	return []interface{}{att}
+}
+
+func flattenPersistentVolumeAccessModes(modes []api.PersistentVolumeAccessMode) *schema.Set {
+	if len(modes) == 0 {
+		return nil
+	}
+	items := make([]interface{}, len(modes))
+	for i, mode := range modes {
+		items[i] = string(mode)
+	}
+	return schema.NewSet(schema.HashString, items)
+}
+
+func flattenDataVolumeStorage(in cdiv1.StorageSpec) []interface{} {
+	att := map[string]interface{}{}
+	// PATCH: usa "access_modes" non "accessModes"
+	if len(in.AccessModes) > 0 {
+		att["access_modes"] = flattenPersistentVolumeAccessModes(in.AccessModes)
+	}
+	// ...altro codice per "resources"...
+	if in.Resources.Requests != nil && len(in.Resources.Requests) > 0 {
+		att["resources"] = flattenResourceRequirements(in.Resources)
+	}
+	// (Non serve più gestire camelCase!)
+	if len(att) == 0 {
+		return nil
 	}
 	return []interface{}{att}
 }
