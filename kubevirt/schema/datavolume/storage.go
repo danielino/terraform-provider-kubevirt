@@ -62,11 +62,12 @@ func expandDataVolumeStorage(dataVolumeStorage []interface{}) *cdiv1.StorageSpec
 	result := &cdiv1.StorageSpec{}
 	in := dataVolumeStorage[0].(map[string]interface{})
 
-	// access_modes ignorato (se non serve)
+	// Process access_modes
 	if v, ok := in["access_modes"].(*schema.Set); ok && v.Len() > 0 {
 		result.AccessModes = expandPersistentVolumeAccessModes(v.List())
 	}
 
+	// Process resources
 	if v, ok := in["resources"].([]interface{}); ok && len(v) > 0 {
 		if res, ok := v[0].(map[string]interface{}); ok {
 			if requests, ok := res["requests"].(map[string]interface{}); ok && len(requests) > 0 {
@@ -79,9 +80,14 @@ func expandDataVolumeStorage(dataVolumeStorage []interface{}) *cdiv1.StorageSpec
 						}
 					}
 				}
-				return result
 			}
 		}
 	}
-	return nil
+
+	// Check if result is empty
+	if len(result.AccessModes) == 0 && len(result.Resources.Requests) == 0 {
+		return nil
+	}
+
+	return result
 }
