@@ -198,21 +198,6 @@ func FlattenDataVolumeSpec(spec cdiv1.DataVolumeSpec) []interface{} {
 
 	if spec.PVC != nil {
 		att["pvc"] = k8s.FlattenPersistentVolumeClaimSpec(*spec.PVC)
-		/*
-			pvcMap := FlattenPersistentVolumeClaimSpec(*spec.PVC)
-			if pvcMap != nil && len(pvcMap) > 0 {
-				isReallyEmpty := true
-				for _, m := range pvcMap {
-					if mm, ok := m.(map[string]interface{}); ok && len(mm) > 0 {
-						isReallyEmpty = false
-					}
-				}
-				if !isReallyEmpty {
-					att["pvc"] = pvcMap
-				}
-			}
-
-		*/
 	}
 
 	if spec.SourceRef != nil {
