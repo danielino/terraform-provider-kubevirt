@@ -169,6 +169,32 @@ Optional:
 
 
 
+<a id="nestedblock--spec--data_volume_templates--spec--source_ref"></a>
+### Nested Schema for `spec.data_volume_templates.spec.source_ref`
+
+Optional:
+
+- `kind` (String) The kind of the source reference, currently only "DataSource" is supported.
+- `name` (String) The name of the source reference.
+- `namespace` (String) The namespace of the source reference, defaults to the DataVolume namespace.
+
+
+
+
+<a id="nestedblock--spec--data_volume_templates--spec--storage"></a>
+### Nested Schema for `spec.data_volume_templates.spec.storage`
+
+Optional:
+
+- `resources` (Block List, Min: 1, Max: 1) Resources describes the Compute Resources required by this vmi. (see [below for nested schema](#nestedblock--spec--template--spec--domain--resources))
+
+<a id="nestedblock--spec--data_volume_templates--spec--storage--resources"></a>
+### Nested Schema for `spec.template.spec.domain.resources`
+
+Optional:
+
+- `requests` (Map of String) Requests is a description of the initial vmi resources.
+
 
 <a id="nestedblock--spec--template"></a>
 ### Nested Schema for `spec.template`
