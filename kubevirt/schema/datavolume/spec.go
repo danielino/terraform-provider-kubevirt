@@ -53,21 +53,26 @@ func ExpandDataVolumeSpec(dataVolumeSpec []interface{}) (cdiv1.DataVolumeSpec, e
 	in := dataVolumeSpec[0].(map[string]interface{})
 
 	if in["source_ref"] == nil {
-		result.Source = expandDataVolumeSource(in["source"].([]interface{}))
+		if source, ok := in["source"].([]interface{}); ok && len(source) > 0 {
+			result.Source = expandDataVolumeSource(source)
+		}
 	} else {
-		result.SourceRef = expandDataVolumeSourceRef(in["source_ref"].([]interface{}))
+		if sourceRef, ok := in["source_ref"].([]interface{}); ok && len(sourceRef) > 0 {
+			result.SourceRef = expandDataVolumeSourceRef(sourceRef)
+		}
 	}
 
-	if in["pvc"] != nil && len(in["pvc"].([]interface{})) > 0 {
-		p, err := k8s.ExpandPersistentVolumeClaimSpec(in["pvc"].([]interface{}))
-		if err != nil {
-			return result, err
+	if in["pvc"] != nil {
+		if pvc, ok := in["pvc"].([]interface{}); ok && len(pvc) > 0 {
+			p, err := k8s.ExpandPersistentVolumeClaimSpec(pvc)
+			if err != nil {
+				return result, err
+			}
+			result.PVC = p
 		}
-		result.PVC = p
 	} else if in["storage"] != nil {
-		arr, ok := in["storage"].([]interface{})
-		if ok && len(arr) > 0 {
-			s := expandDataVolumeStorage(arr)
+		if storage, ok := in["storage"].([]interface{}); ok && len(storage) > 0 {
+			s := expandDataVolumeStorage(storage)
 			if s != nil {
 				result.Storage = s
 			}

@@ -259,23 +259,11 @@ func flattenDataVolumeSourceRef(in cdiv1.DataVolumeSourceRef) []interface{} {
 	return []interface{}{att}
 }
 
-func flattenPersistentVolumeAccessModes(modes []api.PersistentVolumeAccessMode) []interface{} {
-	if len(modes) == 0 {
-		return nil
-	}
-	items := make([]interface{}, len(modes))
-	for i, mode := range modes {
-		items[i] = string(mode)
-	}
-	return items
-}
-
 func flattenDataVolumeStorage(in cdiv1.StorageSpec) []interface{} {
 	att := map[string]interface{}{}
 	if in.Resources.Requests != nil && len(in.Resources.Requests) > 0 {
 		att["resources"] = flattenResourceRequirements(in.Resources)
 	}
-	// (Non serve più gestire camelCase!)
 	if len(att) == 0 {
 		return nil
 	}
