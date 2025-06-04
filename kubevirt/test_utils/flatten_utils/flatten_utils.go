@@ -4,6 +4,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	test_entities "github.com/kubevirt/terraform-provider-kubevirt/kubevirt/test_utils/entities"
 	"github.com/kubevirt/terraform-provider-kubevirt/kubevirt/utils"
+	"k8s.io/utils/pointer"
 
 	k8sv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -41,6 +42,21 @@ func getDataVolumeSpec() cdiv1.DataVolumeSpec {
 			Selector:         test_entities.LabelSelectorAPI,
 			VolumeName:       "volume_name",
 			StorageClassName: (func() *string { str := "standard"; return &str })(),
+		},
+		Storage: &cdiv1.StorageSpec{
+			AccessModes: []k8sv1.PersistentVolumeAccessMode{
+				"ReadWriteOnce",
+			},
+			Resources: k8sv1.ResourceRequirements{
+				Requests: k8sv1.ResourceList{
+					"storage": (func() resource.Quantity { res, _ := resource.ParseQuantity("10Gi"); return res })(),
+				},
+			},
+		},
+		SourceRef: &cdiv1.DataVolumeSourceRef{
+			Kind:      "DataVolumeSource",
+			Namespace: pointer.String("cdi.kubevirt.io"),
+			Name:      "test-vm-bootvolume",
 		},
 		ContentType: cdiv1.DataVolumeContentType("content_type"),
 	}
@@ -121,6 +137,24 @@ func GetBaseOutputForDataVolume() interface{} {
 							map[string]interface{}{
 								"namespace": "namespace",
 								"name":      "name",
+							},
+						},
+					},
+				},
+				"source_ref": []interface{}{
+					map[string]interface{}{
+						"kind":      "DataVolumeSource",
+						"name":      "test-vm-bootvolume",
+						"namespace": "cdi.kubevirt.io",
+					},
+				},
+				"storage": []interface{}{
+					map[string]interface{}{
+						"resources": []interface{}{
+							map[string]interface{}{
+								"requests": map[string]interface{}{
+									"storage": "10Gi",
+								},
 							},
 						},
 					},
@@ -347,6 +381,24 @@ func GetBaseOutputForVirtualMachine() interface{} {
 									map[string]interface{}{
 										"namespace": "namespace",
 										"name":      "name",
+									},
+								},
+							},
+						},
+						"source_ref": []interface{}{
+							map[string]interface{}{
+								"kind":      "DataVolumeSource",
+								"name":      "test-vm-bootvolume",
+								"namespace": "cdi.kubevirt.io",
+							},
+						},
+						"storage": []interface{}{
+							map[string]interface{}{
+								"resources": []interface{}{
+									map[string]interface{}{
+										"requests": map[string]interface{}{
+											"storage": "10Gi",
+										},
 									},
 								},
 							},

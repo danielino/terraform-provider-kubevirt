@@ -259,7 +259,7 @@ func flattenDataVolumeSourceRef(in cdiv1.DataVolumeSourceRef) []interface{} {
 	return []interface{}{att}
 }
 
-func flattenPersistentVolumeAccessModes(modes []api.PersistentVolumeAccessMode) *schema.Set {
+func flattenPersistentVolumeAccessModes(modes []api.PersistentVolumeAccessMode) []interface{} {
 	if len(modes) == 0 {
 		return nil
 	}
@@ -267,16 +267,11 @@ func flattenPersistentVolumeAccessModes(modes []api.PersistentVolumeAccessMode) 
 	for i, mode := range modes {
 		items[i] = string(mode)
 	}
-	return schema.NewSet(schema.HashString, items)
+	return items
 }
 
 func flattenDataVolumeStorage(in cdiv1.StorageSpec) []interface{} {
 	att := map[string]interface{}{}
-	// PATCH: usa "access_modes" non "accessModes"
-	if len(in.AccessModes) > 0 {
-		att["access_modes"] = flattenPersistentVolumeAccessModes(in.AccessModes)
-	}
-	// ...altro codice per "resources"...
 	if in.Resources.Requests != nil && len(in.Resources.Requests) > 0 {
 		att["resources"] = flattenResourceRequirements(in.Resources)
 	}

@@ -58,20 +58,12 @@ func ExpandDataVolumeSpec(dataVolumeSpec []interface{}) (cdiv1.DataVolumeSpec, e
 		result.SourceRef = expandDataVolumeSourceRef(in["source_ref"].([]interface{}))
 	}
 
-	// DEBUG qui:
-
 	if in["pvc"] != nil && len(in["pvc"].([]interface{})) > 0 {
 		p, err := k8s.ExpandPersistentVolumeClaimSpec(in["pvc"].([]interface{}))
 		if err != nil {
 			return result, err
 		}
-		// PATCH: Solo se ha almeno un campo!
-		if p != nil && (len(p.AccessModes) > 0 || len(p.Resources.Requests) > 0 || len(p.Resources.Limits) > 0 ||
-			p.Selector != nil || p.VolumeName != "" || p.StorageClassName != nil) {
-			result.PVC = p
-		} else {
-			result.PVC = nil
-		}
+		result.PVC = p
 	} else if in["storage"] != nil {
 		arr, ok := in["storage"].([]interface{})
 		if ok && len(arr) > 0 {
@@ -104,7 +96,7 @@ func flattenResourceRequirements(in api.ResourceRequirements) []interface{} {
 	return []interface{}{m} // PATCH: dev’essere una slice!
 }
 
-func FlattenPersistentVolumeAccessModes(modes []api.PersistentVolumeAccessMode) []interface{} {
+func FlattenPersistentVolumeAccessModes(modes []api.PersistentVolumeAccessMode) *schema.Set {
 	if len(modes) == 0 {
 		return nil
 	}
@@ -112,7 +104,7 @@ func FlattenPersistentVolumeAccessModes(modes []api.PersistentVolumeAccessMode) 
 	for i, mode := range modes {
 		result[i] = string(mode)
 	}
-	return result
+	return schema.NewSet(schema.HashString, result)
 }
 
 func flattenLabelSelector(in *metav1.LabelSelector) map[string]interface{} {
@@ -143,7 +135,7 @@ func flattenLabelSelector(in *metav1.LabelSelector) map[string]interface{} {
 func FlattenPersistentVolumeClaimSpec(in api.PersistentVolumeClaimSpec) []interface{} {
 	att := make(map[string]interface{})
 
-	if am := FlattenPersistentVolumeAccessModes(in.AccessModes); len(am) > 0 {
+	if am := FlattenPersistentVolumeAccessModes(in.AccessModes); am.Len() > 0 {
 		att["access_modes"] = am
 	}
 
@@ -200,18 +192,22 @@ func FlattenDataVolumeSpec(spec cdiv1.DataVolumeSpec) []interface{} {
 	}
 
 	if spec.PVC != nil {
-		pvcMap := FlattenPersistentVolumeClaimSpec(*spec.PVC)
-		if pvcMap != nil && len(pvcMap) > 0 {
-			isReallyEmpty := true
-			for _, m := range pvcMap {
-				if mm, ok := m.(map[string]interface{}); ok && len(mm) > 0 {
-					isReallyEmpty = false
+		att["pvc"] = k8s.FlattenPersistentVolumeClaimSpec(*spec.PVC)
+		/*
+			pvcMap := FlattenPersistentVolumeClaimSpec(*spec.PVC)
+			if pvcMap != nil && len(pvcMap) > 0 {
+				isReallyEmpty := true
+				for _, m := range pvcMap {
+					if mm, ok := m.(map[string]interface{}); ok && len(mm) > 0 {
+						isReallyEmpty = false
+					}
+				}
+				if !isReallyEmpty {
+					att["pvc"] = pvcMap
 				}
 			}
-			if !isReallyEmpty {
-				att["pvc"] = pvcMap
-			}
-		}
+
+		*/
 	}
 
 	if spec.SourceRef != nil {
@@ -232,7 +228,6 @@ func FlattenDataVolumeSpec(spec cdiv1.DataVolumeSpec) []interface{} {
 		}
 	}
 
-	// Qui: se la mappa att è vuota, ritorna nil!
 	if len(att) == 0 {
 		return nil
 	}
