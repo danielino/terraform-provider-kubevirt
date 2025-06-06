@@ -11,7 +11,6 @@ func dataVolumeSourceFields() map[string]*schema.Schema {
 	return map[string]*schema.Schema{
 		"http": dataVolumeSourceHTTPSchema(),
 		"pvc":  dataVolumeSourcePVCSchema(),
-		"ref":  dataVolumeSourceRefSchema(),
 	}
 }
 
