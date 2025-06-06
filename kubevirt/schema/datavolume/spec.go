@@ -98,7 +98,7 @@ func flattenResourceRequirements(in api.ResourceRequirements) []interface{} {
 	if len(m) == 0 {
 		return nil
 	}
-	return []interface{}{m} // PATCH: dev’essere una slice!
+	return []interface{}{m}
 }
 
 func FlattenPersistentVolumeAccessModes(modes []api.PersistentVolumeAccessMode) *schema.Set {
