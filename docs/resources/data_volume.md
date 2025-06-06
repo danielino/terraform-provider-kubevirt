@@ -109,7 +109,6 @@ Optional:
 
 - `http` (Block List, Max: 1) DataVolumeSourceHTTP provides the parameters to create a Data Volume from an HTTP source. (see [below for nested schema](#nestedblock--spec--source--http))
 - `pvc` (Block List, Max: 1) DataVolumeSourcePVC provides the parameters to create a Data Volume from an existing PVC. (see [below for nested schema](#nestedblock--spec--source--pvc))
-- `ref` (Block List, Max: 1) DataVolumeSourceRef defines an indirect reference to the source of data for the DataVolume . (see [below for nested schema](#nestedblock--spec--source--ref)
 
 <a id="nestedblock--spec--source--http"></a>
 ### Nested Schema for `spec.source.http`
@@ -129,15 +128,6 @@ Optional:
 - `name` (String) The name of the PVC.
 - `namespace` (String) The namespace which the PVC located in.
 
-
-<a id="nestedblock--spec--source--ref"></a>
-### Nested Schema for `spec.source.ref`
-
-Optional:
-
-- `name` (String) The name of the source reference.
-- `namespace` (String) The namespace of the source reference, defaults to the DataVolume namespace.
-- `kind` (String) The kind of the source reference, currently only "DataSource" is supported.
 
 
 
