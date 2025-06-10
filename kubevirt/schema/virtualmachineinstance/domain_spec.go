@@ -2,6 +2,7 @@ package virtualmachineinstance
 
 import (
 	"fmt"
+	"k8s.io/utils/pointer"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -123,6 +124,57 @@ func domainSpecFields() map[string]*schema.Schema {
 				},
 			},
 		},
+		"features": {
+			Type:        schema.TypeList,
+			Optional:    true,
+			MaxItems:    1,
+			Description: "Domain features (es. SMM).",
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"ssm": {
+						Type:        schema.TypeList,
+						Optional:    true,
+						MaxItems:    1,
+						Description: "System Management Mode feature.",
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"enabled": {
+									Type:        schema.TypeBool,
+									Optional:    true,
+									Description: "Enable SMM.",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		"firmware": {
+			Type:        schema.TypeList,
+			Optional:    true,
+			MaxItems:    1,
+			Description: "Firmware configuration (EFI/BIOS).",
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"bootloader": {
+						Type:     schema.TypeList,
+						Optional: true,
+						MaxItems: 1,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"efi": {
+									Type:        schema.TypeList,
+									Optional:    true,
+									MaxItems:    1,
+									Description: "Use UEFI bootloader.",
+									Elem:        &schema.Resource{Schema: map[string]*schema.Schema{}},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -164,6 +216,12 @@ func expandDomainSpec(domainSpec []interface{}) (kubevirtapiv1.DomainSpec, error
 			return result, err
 		}
 		result.Devices = devices
+	}
+	if v, ok := in["features"].([]interface{}); ok {
+		result.Features = expandDomainFeatures(v)
+	}
+	if v, ok := in["firmware"].([]interface{}); ok {
+		result.Firmware = expandDomainFirmware(v)
 	}
 
 	return result, nil
@@ -323,6 +381,13 @@ func flattenDomainSpec(in kubevirtapiv1.DomainSpec) []interface{} {
 
 	att["resources"] = flattenResources(in.Resources)
 	att["devices"] = flattenDevices(in.Devices)
+	// --- NEW: flatten features & firmware ---
+	if in.Features != nil {
+		att["features"] = flattenDomainFeatures(in.Features)
+	}
+	if in.Firmware != nil {
+		att["firmware"] = flattenDomainFirmware(in.Firmware)
+	}
 
 	return []interface{}{att}
 }
@@ -412,4 +477,61 @@ func flattenInterfaceBindingMethod(in kubevirtapiv1.InterfaceBindingMethod) stri
 	}
 
 	return ""
+}
+
+// --- HELPERS ---
+func expandDomainFeatures(in []interface{}) *kubevirtapiv1.Features {
+	if len(in) == 0 || in[0] == nil {
+		return nil
+	}
+	m := in[0].(map[string]interface{})
+	f := &kubevirtapiv1.Features{}
+
+	if s, ok := m["ssm"].([]interface{}); ok && len(s) > 0 && s[0] != nil {
+		ssmm := s[0].(map[string]interface{})
+		if enabled, ok2 := ssmm["enabled"].(bool); ok2 && enabled {
+			// FeatureState.Enabled è *bool
+			f.SMM = &kubevirtapiv1.FeatureState{Enabled: pointer.Bool(true)}
+		}
+	}
+	return f
+}
+
+func expandDomainFirmware(in []interface{}) *kubevirtapiv1.Firmware {
+	if len(in) == 0 || in[0] == nil {
+		return nil
+	}
+	m := in[0].(map[string]interface{})
+	fw := &kubevirtapiv1.Firmware{}
+
+	if blArr, ok := m["bootloader"].([]interface{}); ok && len(blArr) > 0 && blArr[0] != nil {
+		bl := blArr[0].(map[string]interface{})
+		if _, hasEFI := bl["efi"]; hasEFI {
+			fw.Bootloader = &kubevirtapiv1.Bootloader{EFI: &kubevirtapiv1.EFI{}}
+		}
+	}
+	return fw
+}
+
+func flattenDomainFeatures(in *kubevirtapiv1.Features) []interface{} {
+	m := map[string]interface{}{}
+	if in.SMM != nil && in.SMM.Enabled != nil && *in.SMM.Enabled {
+		m["ssm"] = []interface{}{map[string]interface{}{"enabled": true}}
+	}
+	if len(m) == 0 {
+		return nil
+	}
+	return []interface{}{m}
+}
+
+func flattenDomainFirmware(in *kubevirtapiv1.Firmware) []interface{} {
+	if in.Bootloader == nil || in.Bootloader.EFI == nil {
+		return nil
+	}
+	// {"bootloader":[{"efi":[]}]}
+	return []interface{}{map[string]interface{}{
+		"bootloader": []interface{}{map[string]interface{}{
+			"efi": []interface{}{map[string]interface{}{}},
+		}},
+	}}
 }
