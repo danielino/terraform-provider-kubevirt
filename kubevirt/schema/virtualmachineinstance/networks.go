@@ -2,7 +2,6 @@ package virtualmachineinstance
 
 import (
 	"fmt"
-
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	kubevirtapiv1 "kubevirt.io/api/core/v1"
 )
@@ -109,12 +108,13 @@ func expandNetworkSource(networkSource []interface{}) kubevirtapiv1.NetworkSourc
 	in := networkSource[0].(map[string]interface{})
 
 	if v, ok := in["pod"].([]interface{}); ok {
-		result.Pod = expandPodNetwork(v)
+		if len(v) != 0 {
+			result.Pod = expandPodNetwork(v)
+		}
 	}
 	if v, ok := in["multus"].([]interface{}); ok {
 		result.Multus = expandMultusNetwork(v)
 	}
-
 	return result
 }
 
